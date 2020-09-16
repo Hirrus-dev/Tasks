@@ -19,7 +19,7 @@ sudo chown -R $user:$group /home/$user
 echo "$user ALL=/usr/sbin/service * start" | sudo tee /etc/sudoers.d/$user > /dev/null
 echo "$user ALL=/usr/sbin/service * stop" | sudo tee -a /etc/sudoers.d/$user > /dev/null
 echo "$user ALL=/usr/sbin/service * restart" | sudo tee -a /etc/sudoers.d/$user > /dev/null
-#sudo cat /etc/sudoers.d/$user
+sudo cat /etc/sudoers.d/$user
 sudo apt update
 sudo apt upgrade -y
 sudo apt install -y nginx
@@ -29,17 +29,17 @@ sudo systemctl enable monit
 echo -e "set httpd\n\t port 2812\n\t use address 127.0.0.1\n\t allow devops:test" | sudo tee /etc/monit/conf-available/web > /dev/null
 sudo ln -sf /etc/monit/conf-available/web /etc/monit/conf-enabled/web
 sudo service monit restart
-sudo bash -c 'cat <<EOF > /etc/nginx/sites-available/monit
+cat << EOF | sudo tee /etc/nginx/sites-available/monit > /dev/null
 server {
   listen 80;
-  server_name 192.168.12.201;
+  server_name $(hostname -I | awk '{ print $1 }');
 
   location /monit/ {
-    rewrite ^/monit/(.*) /$1 break;
+    rewrite ^/monit/(.*) /\$1 break;
     proxy_pass http://127.0.0.1:2812;
-    proxy_set_header Host $host;
+    proxy_set_header Host \$host;
   }
 }
-EOF'
+EOF
 sudo ln -sf /etc/nginx/sites-available/monit /etc/nginx/sites-enabled/monit
 sudo service nginx restart
