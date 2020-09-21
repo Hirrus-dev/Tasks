@@ -1,0 +1,169 @@
+---
+# tasks file for Common
+- name: Update and upgrade apt packages
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400 #One day
+
+- name: Ensure group "{{group}}" exists
+  group:
+    name: "{{group}}"
+    state: present
+
+- name: Add the user "{{user}}" with a bash shell, appending the group "{{group}}" to the user's groups
+  user:
+    name: "{{user}}"
+    shell: /bin/bash
+    groups: "{{group}}"
+    home: "/home/{{user}}"
+    append: yes
+
+- name: Ensure home directory for "{{user}}" is present
+  file:
+    path: "/home/{{user}}"
+    state: directory
+    owner: "{{user}}"
+    group: "{{group}}"
+
+- name: Set timezone to "{{timezone}}"
+  timezone:
+    name: "{{timezone}}"
+
+- name: Ensure a locale exists
+  locale_gen:
+    name: "{{locale}}"
+    state: present
+
+- name: update locale
+  command: sudo update-locale LANG="{{locale}}"
+
+- name: Ensure the PermitRootLogin set no
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    firstmatch: yes
+    line: PermitRootLogin no
+
+- name: Ensure the default ssh port is "{{ssh_port}}"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '#?Port'
+    firstmatch: yes
+    line: Port 22
+  notify:
+    - SSHD restart
+
+- name: Make sure user {{user}} is in the sudoers configuration
+  blockinfile:
+    path: "/etc/sudoers.d/{{user}}"
+    create: yes
+    state: present
+    block: |
+      {{user}} ALL=/usr/sbin/service * start
+      {{user}} ALL=/usr/sbin/service * stop
+      {{user}} ALL=/usr/sbin/service * restart
+
+- name: Install nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Install monit
+  apt:
+    name: monit
+    state: present
+
+- name: Copy monit.service
+  copy:
+    src: monit.service
+    dest: /lib/systemd/system/monit.service
+  notify:
+    - Systemd reload
+
+- name: Create a directory if it does not exist
+  file:
+    path: /etc/monit/conf-available/
+    state: directory
+
+- name: Copy monit configuration for web access
+  copy:
+    src: monit-web.conf
+    dest: /etc/monit/conf-available/web
+  
+- name: Create a symbolic link
+  file:
+    src: /etc/monit/conf-available/web
+    dest: /etc/monit/conf-enabled/web
+    state: link
+  notify:
+    - MONIT restart
+
+- name: Copy monit site for nginx
+  template:
+    src: monit-site
+    dest: /etc/nginx/sites-available/monit
+
+- name: Create a symbolic link
+  file:
+    src: /etc/nginx/sites-available/monit
+    dest: /etc/nginx/sites-enabled/monit
+    state: link
+  notify:
+    - NGINX restart
+
+- name: Ensure service monit is started and ensure it is not masked
+  systemd:
+    name: monit
+    state: started
+    enabled: yes
+    masked: no
+
+- name: Ensure service nginx is started and ensure it is not masked
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+    masked: no
+
+- name: Deny all incoming and enable UFW
+  ufw:
+    state: disabled
+    policy: deny
+    direction: incoming
+
+- name: Allow everything outgoing and enable UFW
+  ufw:
+    state: disabled
+    policy: allow
+    direction: outgoing
+
+- ufw:
+    rule: limit
+    port: ssh
+    proto: tcp
+
+- name: Allow OpenSSH rule
+  ufw:
+    rule: allow
+    name: OpenSSH
+    direction: in
+
+
+- name: Allow tcp access to port {{ssh_port}}
+  ufw:
+    rule: allow
+    port: "{{ssh_port}}"
+    proto: tcp
+    direction: in
+
+- name: Allow all access to tcp port 80
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+    direction: in
+
+- name: Enable UFW
+  ufw:
+    state: enabled

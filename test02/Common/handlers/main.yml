@@ -1,0 +1,21 @@
+---
+# handlers file for Common
+- name: SSHD restart
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Systemd reload
+  systemd:
+    daemon_reload: yes
+
+- name: NGINX restart
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: MONIT restart
+  systemd:
+    name: monit
+    state: restarted
+

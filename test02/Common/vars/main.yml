@@ -1,0 +1,8 @@
+---
+# vars file for Common
+user: serviceuser
+group: service
+timezone: Europe/Moscow
+locale: en_US.UTF-8
+ssh_port: 2498
+ansible_become_pass: ansible

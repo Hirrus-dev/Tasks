@@ -1,0 +1,7 @@
+---
+- name: Sample server configuration
+  hosts: Ubuntu-2
+  become: yes
+
+  roles:
+    - Common
