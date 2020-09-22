@@ -99,6 +99,19 @@
   notify:
     - MONIT restart
 
+- name: Copy monit configuration for nginx monitoring
+  copy:
+    src: mynginx
+    dest: /etc/monit/conf-available/mynginx
+  
+- name: Create a symbolic link
+  file:
+    src: /etc/monit/conf-available/mynginx
+    dest: /etc/monit/conf-enabled/mynginx
+    state: link
+  notify:
+    - MONIT restart
+
 - name: Copy monit site for nginx
   template:
     src: monit-site
