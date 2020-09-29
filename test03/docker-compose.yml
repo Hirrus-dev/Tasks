@@ -1,0 +1,48 @@
+version: '3.1'
+
+services:
+ 
+  db:
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: examplepass
+      POSTGRES_USER: exampleuser
+      POSTGRES_DB: exampledb
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  wordpress:
+    build:
+      context: ./
+      dockerfile: wordpress.dockerfile
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: exampleuser
+      WORDPRESS_DB_PASSWORD: examplepass
+      WORDPRESS_DB_NAME: exampledb
+    volumes:
+      - wordpress:/var/www/html
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "8090:80"
+    volumes:
+      - ./nginx-config:/etc/nginx/conf.d/default.conf:ro
+      - wordpress:/var/www/html
+    restart: always
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+
+  cache:
+    build:
+      context: ./
+      dockerfile: redis.dockerfile
+    restart: always
+
+volumes:
+  wordpress:
+  db:
